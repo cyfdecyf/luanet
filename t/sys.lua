@@ -4,6 +4,16 @@ local ffi = require 'ffi'
 
 local M = {}
 
+function M.test_addr_convert()
+  local ipaddr = { ip = '127.0.0.1', port = 1234 }
+  local sockaddr, err = sys.ip_to_sockaddr(sys.AF_INET, ipaddr)
+  assert_nil(err, 'ip_to_sockaddr test')
+
+  local ipback = sys.sockaddr_to_ip(sockaddr)
+  assert_true(ipback.ip == ipaddr.ip, 'converted back ip not match')
+  assert_true(ipback.port == ipaddr.port, 'converted back port not match')
+end
+
 function M.test_sys_socket()
   local fd, err = sys.socket(sys.AF_INET, sys.SOCK_STREAM, 0)
   assert_not_nil(fd)

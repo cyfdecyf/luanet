@@ -18,6 +18,7 @@ uint32_t ntohl(uint32_t netlong);
 uint16_t ntohs(uint16_t netshort);
 
 int inet_aton(const char *cp, struct in_addr *pin);
+char *inet_ntoa(struct in_addr in);
 
 int getsockopt(int sockfd, int level, int optname, const void *optval, socklen_t *optlen);
 int setsockopt(int sockfd, int level, int optname, const void *optval, socklen_t optlen);
@@ -67,11 +68,15 @@ M.SOL_SOCKET = C.SOL_SOCKET
 
 M.os = ffi.os
 
+local sockaddr_type = ffi.typeof('struct sockaddr *')
+local sockaddr_in_type = ffi.typeof('struct sockaddr_in *')
+local sockaddr_in1_type = ffi.typeof('struct sockaddr_in[1]')
+
 -- addr: ipv4: { ip = '127.0.0.1', port = 8080 }
 -- return: sockaddr, err
 function M.ip_to_sockaddr(family, addr)
   if family == C.AF_INET then
-    local sa = ffi.new('struct sockaddr_in[1]')
+    local sa = sockaddr_in1_type()
     C.bzero(sa, ffi.sizeof(sa))
     sa[0].sin_family = C.AF_INET
     sa[0].sin_port = C.htons(addr.port);
@@ -87,9 +92,13 @@ end
 -- sockaddr: struct sockaddr
 -- return: ipaddr
 function M.sockaddr_to_ip(sockaddr)
-  if sockaddr.sa_family == C.AF_INET then
-    local sa = ffi.cast('struct sockaddr_in *', sockaddr)
-    return { ip = C.inet_ntoa(sa.sin_addr), port = C.ntohl(sa.sin_port) }
+  local sa = ffi.cast(sockaddr_type, sockaddr)
+  if sa.sa_family == C.AF_INET then
+    sa = ffi.cast(sockaddr_in_type, sockaddr)
+    return {
+      ip = ffi.string(C.inet_ntoa(sa.sin_addr)),
+      port = C.ntohs(sa.sin_port)
+    }
   end
   error('sockaddr_to_ip family not supported')
 end
@@ -103,22 +112,22 @@ function M.socket(domain, type, protocol)
   return fd, nil
 end
 
-local sockopt_newstr = {
-  [M.SO_BROADCAST] = 'int32_t[1]',
-  [M.SO_REUSEADDR] = 'int32_t[1]',
+local sockopt_newtype = {
+  [M.SO_BROADCAST] = ffi.typeof('int32_t[1]'),
+  [M.SO_REUSEADDR] = ffi.typeof('int32_t[1]'),
 }
 
 -- return: err
 function M.setsockopt(sockfd, level, option_name, option_value)
-  assert(sockopt_newstr[option_name])
-  local val = ffi.new(sockopt_newstr[option_name], option_value)
+  assert(sockopt_newtype[option_name])
+  local val = ffi.new(sockopt_newtype[option_name], option_value)
   local r = C.setsockopt(sockfd, level, option_name, val, ffi.sizeof(val))
   return r == -1 and ffi.errno() or nil
 end
 
 -- sockaddr: { ip: '127.0.0.1'1, port = 1234 }
 function M.bind(sockfd, sockaddr)
-  local r = C.bind(sockfd, ffi.cast('struct sockaddr *', sockaddr), ffi.sizeof(sockaddr))
+  local r = C.bind(sockfd, ffi.cast(sockaddr_type, sockaddr), ffi.sizeof(sockaddr))
   return r == -1 and ffi.errno() or nil
 end
 
@@ -128,11 +137,14 @@ function M.listen(sockfd, backlog)
   return r == -1 and ffi.errno() or nil
 end
 
+local sockaddr_big1_type = ffi.typeof('sockaddr_big[1]')
+local socklen_t1_type = ffi.typeof('socklen_t[1]')
+
 -- return: client fd, sockaddr, err
 function M.accept(sockfd)
-  local sa = ffi.new('sockaddr_big[1]')
-  local lsa = ffi.new('socklen_t[1]', ffi.sizeof(sa))
-  local fd = C.accept(sockfd, ffi.cast('struct sockaddr *', sa), lsa)
+  local sa = sockaddr_big1_type()
+  local lsa = ffi.new(socklen_t1_type, ffi.sizeof(sa))
+  local fd = C.accept(sockfd, ffi.cast(sockaddr_type, sa), lsa)
   if fd == -1 then
     return nil, nil, ffi.errno()
   end
@@ -141,7 +153,7 @@ end
 
 -- return: err
 function M.connect(sockfd, sockaddr)
-  local r = C.connect(sockfd, ffi.cast("struct sockaddr *", sockaddr),
+  local r = C.connect(sockfd, ffi.cast(sockaddr_type, sockaddr),
     ffi.sizeof(sockaddr))
   return r == -1 and ffi.errno() or nil
 end
