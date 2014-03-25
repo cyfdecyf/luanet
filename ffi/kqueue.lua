@@ -11,6 +11,23 @@ int kevent(int kq, const struct kevent *changelist, int nchanges,
 
 local M = {}
 
+M.EVFILT_READ = C.EVFILT_READ
+M.EVFILT_WRITE = C.EVFILT_WRITE
+M.EVFILT_AIO = C.EVFILT_AIO
+M.EVFILT_TIMER = C.EVFILT_TIMER
+
+M.EV_ADD = C.EV_ADD
+M.EV_DELETE = C.EV_DELETE
+M.EV_DISABLE  = C.EV_DISABLE
+M.EV_RECEIPT = C.EV_RECEIPT
+
+M.EV_ONSHOT = C.EV_ONSHOT
+M.EV_CLEAR = C.EV_CLEAR
+M.EV_DISPATCH = C.EV_DISPATCH
+
+M.EV_EOF = C.EV_EOF
+M.EV_ERROR = C.EV_ERROR
+
 -- return kqueue descriptor and err
 function M.kqueue()
   local kq = C.kqueue()
@@ -20,13 +37,8 @@ function M.kqueue()
   return kq, nil
 end
 
-function M.ev_set(kev, ident, filter, flags, fflags, data, udata)
-  kev.kev = kev
-  kev.filter = filter
-  kev.flags = flags
-  kev.fflags = fflags
-  kev.data = data
-  kev.udata = udata
+function M.new_kevent(n)
+  return ffi.new('struct kevent[?]', n)
 end
 
 -- timeout: in seconds, can use floating point number, like 1.5
