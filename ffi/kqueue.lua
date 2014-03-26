@@ -41,11 +41,11 @@ function M.new_kevent(n)
   return ffi.new('struct kevent[?]', n)
 end
 
--- timeout: in seconds, can use floating point number, like 1.5
+-- timeout: in micro seconds
 function M.new_timeout(timeout)
   local ts = ffi.new("struct timespec[1]")
-  ts[0].tv_sec = timeout -- automatically convert to int
-  ts[0].tv_nsec = (timeout % 1) * 1e8
+  ts[0].tv_sec = timeout/1e6
+  ts[0].tv_nsec = (timeout % 1e6) * 1e3
   return ts
 end
 

@@ -9,7 +9,7 @@ function M.test_kqueue()
   local q, err = kq.kqueue()
   assert_not_nil(q, util.strerror('create kqueue'))
 
-  local timeout = kq.new_timeout(0.1)
+  local timeout = kq.new_timeout(100000)
   assert_not_nil(timeout)
   local r, err = kq.kevent(q, nil, 0, nil, 0, timeout)
   assert_true(r == 0, 'kevent with no change and event list should return 0')
