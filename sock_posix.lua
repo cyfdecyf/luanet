@@ -1,6 +1,6 @@
 local sys = require 'luanet.ffi.sys'
 local sockopt = require 'luanet.sockopt_bsd'
-local NetFD = require 'luanet.fd_unix'
+local netfd = require 'luanet.fd_unix'
 local util = require 'luanet.util'
 
 local syssock
@@ -11,22 +11,26 @@ end
 local M = {}
 
 -- return: err
-local function listen_stream(netfd, laddr, backlog)
-  if sockopt.set_default_listener_sockopts(netfd.fd) ~= nil then
-    return util.strerror('set_default_listener_sockopt fd=%d', netfd.fd)
+local function listen_stream(nfd, laddr, backlog)
+  if sockopt.set_default_listener_sockopts(nfd.fd) ~= nil then
+    return util.strerror('set_default_listener_sockopt fd=%d', nfd.fd)
   end
 
   local errmsg = function(msg)
     return util.strerror('%s fd=%d ip=%s port=%d', msg,
-      netfd.fd, laddr.ip, laddr.port)
+      nfd.fd, laddr.ip, laddr.port)
   end
-  local sa, err = sys.ip_to_sockaddr(netfd.family, laddr)
+  local sa, err = sys.ip_to_sockaddr(nfd.family, laddr)
   if err then return err end
-  err = sys.bind(netfd.fd, sa)
+  err = sys.bind(nfd.fd, sa)
   if err then return errmsg('listen_stream->bind') end
 
-  err = sys.listen(netfd.fd, backlog)
+  err = sys.listen(nfd.fd, backlog)
   if err then return errmsg('listen_stream->listen') end
+
+  err = nfd:init()
+  if err then return errmsg('listen_stream->nfd:init') end
+  nfd:set_addr(laddr, nil)
 end
 
 -- nettype: 'tcp'
@@ -43,11 +47,10 @@ function M.socket(nettype, family, sotype, proto, laddr, raddr)
     return nil, util.strerror('set_default_sockopts')
   end
 
-  local nfd = NetFD.new(sockfd, family, sotype, nettype)
+  local nfd = netfd.new(sockfd, family, sotype, nettype)
   if laddr ~= nil and raddr == nil then
     if sotype == sys.SOCK_STREAM then
-      local err = listen_stream(nfd, laddr, 0xffff)
-
+      local err = listen_stream(nfd, laddr, sys.SOL_SOCKET)
       if err then
         nfd:close()
         return nil, err
