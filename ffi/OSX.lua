@@ -7,6 +7,19 @@ The following definitions are copied from header files on OS X.
 ffi.cdef[[
 static const int EOF = -1; /* stdio.h */
 
+/* sys/errno.h */
+enum {
+  EINTR = 4,
+
+  EAGAIN = 35,
+  EWOULDBLOCK = 35,
+
+  ECONNABORTED = 53,
+  ECONNRESET = 54,
+  ETIMEOUT = 60,
+  ECONNREFUSED = 61,
+};
+
 enum {
   F_DUPFD = 0,
   F_GETFD = 1,

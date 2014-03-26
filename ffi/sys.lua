@@ -1,6 +1,6 @@
 local ffi = require 'ffi'
 local C = ffi.C
-local bit = require('bit')
+local bit = require 'bit'
 
 --[[
 Note for network address:
@@ -22,6 +22,8 @@ char *inet_ntoa(struct in_addr in);
 
 int getsockopt(int sockfd, int level, int optname, const void *optval, socklen_t *optlen);
 int setsockopt(int sockfd, int level, int optname, const void *optval, socklen_t optlen);
+
+int getsockname(int sockfd, struct sockaddr *address, socklen_t *address_len);
 
 int socket(int domain, int type, int protocol);
 
@@ -45,6 +47,15 @@ int usleep(useconds_t useconds);
 local M = {}
 
 M.EOF = {} -- use a table to create a unique object
+
+M.EINTR = C.EINTR
+M.EAGAIN = C.EAGAIN
+M.EWOULDBLOCK = C.EWOULDBLOCK
+
+M.ECONNABORTED = C.ECONNABORTED
+M.ECONNRESET = C.ECONNRESET
+M.ETIMEOUT = C.ETIMEOUT
+M.ECONNREFUSED = C.ECONNREFUSED
 
 M.SOCK_STREAM = C.SOCK_STREAM
 M.SOCK_DGRAM = C.SOCK_DGRAM
@@ -71,6 +82,9 @@ M.os = ffi.os
 local sockaddr_type = ffi.typeof('struct sockaddr *')
 local sockaddr_in_type = ffi.typeof('struct sockaddr_in *')
 local sockaddr_in1_type = ffi.typeof('struct sockaddr_in[1]')
+
+local sockaddr_big1_type = ffi.typeof('sockaddr_big[1]')
+local socklen_t1_type = ffi.typeof('socklen_t[1]')
 
 -- addr: ipv4: { ip = '127.0.0.1', port = 8080 }
 -- return: sockaddr, err
@@ -125,6 +139,16 @@ function M.setsockopt(sockfd, level, option_name, option_value)
   return r == -1 and ffi.errno() or nil
 end
 
+function M.getsockname(sockfd)
+  local sa = sockaddr_big1_type()
+  local salen = ffi.new(socklen_t1_type, ffi.sizeof(sa))
+  local r = C.getsockname(sockfd, ffi.cast(sockaddr_type, sa), salen)
+  if r == -1 then
+    return nil, ffi.errno()
+  end
+  return sa, nil
+end
+
 -- sockaddr: { ip: '127.0.0.1'1, port = 1234 }
 function M.bind(sockfd, sockaddr)
   local r = C.bind(sockfd, ffi.cast(sockaddr_type, sockaddr), ffi.sizeof(sockaddr))
@@ -137,14 +161,11 @@ function M.listen(sockfd, backlog)
   return r == -1 and ffi.errno() or nil
 end
 
-local sockaddr_big1_type = ffi.typeof('sockaddr_big[1]')
-local socklen_t1_type = ffi.typeof('socklen_t[1]')
-
 -- return: client fd, sockaddr, err
 function M.accept(sockfd)
   local sa = sockaddr_big1_type()
-  local lsa = ffi.new(socklen_t1_type, ffi.sizeof(sa))
-  local fd = C.accept(sockfd, ffi.cast(sockaddr_type, sa), lsa)
+  local salen = ffi.new(socklen_t1_type, ffi.sizeof(sa))
+  local fd = C.accept(sockfd, ffi.cast(sockaddr_type, sa), salen)
   if fd == -1 then
     return nil, nil, ffi.errno()
   end
