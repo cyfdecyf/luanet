@@ -16,6 +16,10 @@ function M.strerror(...)
   return s .. ': ' .. errmsg
 end
 
+function M.printf(...)
+  io.write(string.format(...))
+end
+
 function M.bzero(buf, size)
   C.bzero(buf, size)
 end

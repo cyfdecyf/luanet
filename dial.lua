@@ -5,7 +5,7 @@ local util = require 'luanet.util'
 local M = {}
 
 -- nettype: 'tcp'
--- laddr: table {ip = '127.0.0.1', port = 8080}
+-- laddr: table { ip = '127.0.0.1', port = 8080 }
 function M.listen(nettype, laddr)
   local nfd, err = sock.socket(nettype,
     sys.AF_INET, sys.SOCK_STREAM, 0, laddr, nil)

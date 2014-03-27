@@ -1,22 +1,34 @@
 local net = require 'luanet'
+local addr = require 'luanet.addr'
+local printf = require('luanet.util').printf
 
-local srvaddr = { ip = '127.0.0.1', port = 1234 }
+net.debugOn = true
 
-function echo_server()
+function echo_server(srvaddr)
+  printf('server listening %s\n', srvaddr)
   local ln, err = net.listen('tcp', srvaddr)
   if err then
-    print('listen error', err)
+    print('listen error: %s\n', err)
     return err
   end
 
-  local c, err = ln:accept()
-  if err then
-    print('accept error', err)
-    return err
+  while true do
+    local c, err = ln:accept()
+    if err then
+      print('accept error', err)
+      return err
+    end
+    printf('new client %s\n', c.raddr)
+    c:close()
   end
 end
 
-local srv = coroutine.create(echo_server)
-coroutine.resume(srv)
+local srvaddr1 = addr.TCPAddr:new('127.0.0.1', 1234)
+local srvaddr2 = addr.TCPAddr:new('127.0.0.1', 2345)
 
-net.wait(srv)
+local srv1, err = net.run(echo_server, srvaddr1)
+local srv2, err = net.run(echo_server, srvaddr2)
+
+net.wait(srv1)
+net.wait(srv2)
+printf('server exited\n')

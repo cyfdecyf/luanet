@@ -7,5 +7,6 @@ return {
   listen = dial.listen,
   poll = poll.poll,
   wait = poll.wait,
+  run = poll.run,
+  debugOn = require('luanet.log').debugOn,
 }
-

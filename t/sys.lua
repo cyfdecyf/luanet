@@ -27,7 +27,7 @@ function M.test_sys_socket()
   err = sys.set_nonblock(fd, false)
   assert_nil(err, 'set_nonblock false')
 
-  local ipaddr = { ip = '127.0.0.1', port = 1234 }
+  local ipaddr = { ip = '127.0.0.1', port = 8765 }
   local sockaddr, err = sys.ip_to_sockaddr(sys.AF_INET, ipaddr)
   assert_nil(err, 'ip_to_sockaddr')
 

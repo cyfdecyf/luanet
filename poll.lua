@@ -1,4 +1,6 @@
 local sys = require 'luanet.ffi.sys'
+local printf = require('luanet.util').printf
+local debugOn = require('log').debugOn
 
 local pollimp
 if sys.os == 'OSX' then
@@ -7,9 +9,8 @@ end
 
 local M = {}
 
-local PollDesc = {
-  __index = PollDesc,
-}
+local PollDesc = {}
+PollDesc.__index = PollDesc
 
 function PollDesc:new(pd)
   pd = pd or {}
@@ -53,6 +54,18 @@ function M.open(fd)
   return pd, err
 end
 
+-- Create and run the coroutine.
+-- return: coroutine, err
+function M.run(f, ...)
+  local co = coroutine.create(f)
+  local succ, err = coroutine.resume(co, ...)
+  if not succ then
+    printf('run error: %s\n', err)
+    if debugOn then io.write(debug.traceback(co)) end
+  end
+  return co, err
+end
+
 -- Wait for events and resume corresponding coroutine.
 -- Break if specified coroutine finishes.
 function M.poll(block, co)
@@ -61,10 +74,17 @@ function M.poll(block, co)
     if n == 0 then break end
     for i=1,n do
       local pd = pds[i]
+      local succ, err
       if pd.r and pd.waitr then
-        coroutine.resume(pd.co)
+        succ, err = coroutine.resume(pd.co)
       elseif pd.w and pd.waitw then
-        coroutine.resume(pd.co)
+        succ, err = coroutine.resume(pd.co)
+      end
+      if not succ then
+        util.printf('coroutine for %s error %s', pd:string(), err)
+        if debugOn then
+          io.write(debug.traceback(pd.co))
+        end
       end
       if coroutine.status(pd.co) == 'dead' then
         pd:close()

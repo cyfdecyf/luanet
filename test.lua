@@ -8,6 +8,7 @@ if sys.os == 'OSX' then
   lunatest.suite('luanet.t.kqueue')
 end
 
+lunatest.suite('luanet.t.addr')
 lunatest.suite('luanet.t.sock')
 lunatest.suite('luanet.t.dial')
 
