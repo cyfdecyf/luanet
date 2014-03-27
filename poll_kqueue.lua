@@ -6,7 +6,7 @@ local M = {}
 
 local kq
 
-function M.pollinit()
+function M.init()
   local err
   kq, err = syskq.kqueue()
   if err then

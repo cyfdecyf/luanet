@@ -4,5 +4,8 @@ local poll = require 'luanet.poll'
 poll.init()
 
 return {
-  listen = dial.listen
+  listen = dial.listen,
+  poll = poll.poll,
+  wait = poll.wait,
 }
+

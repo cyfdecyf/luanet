@@ -1,4 +1,6 @@
 local lunatest = require 'lunatest'
+
+local net = require 'luanet' -- must require this to do initialization
 local sys = require 'luanet.ffi.sys'
 
 lunatest.suite('luanet.t.sys')

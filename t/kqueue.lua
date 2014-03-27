@@ -17,7 +17,6 @@ function M.test_kqueue()
 end
 
 function M.test_poll_kqueue()
-  pollkq.pollinit()
   local pd = { fd = 0 }
   local err = pollkq.pollopen(pd)
   assert_nil(err)
