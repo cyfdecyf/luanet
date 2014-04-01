@@ -1,27 +1,20 @@
-local ffi = require 'ffi'
-local C = ffi.C
-
-ffi.cdef[[
-void perror(const char *s);
-char *strerror(int errnum);
-
-void bzero(void *s, size_t n);
-]]
+local util = require 'luanet.ffi.util'
 
 local M = {}
 
 function M.strerror(...)
-  local errmsg = ffi.string(C.strerror(ffi.errno()))
-  local s = string.format(...)
-  return s .. ': ' .. errmsg
+  local arg = {...}
+  local errmsg = util.strerror()
+  if #arg == 0 then
+    return errmsg
+  end
+  return string.format(...) .. ': ' .. errmsg
 end
 
 function M.printf(...)
   io.write(string.format(...))
 end
 
-function M.bzero(buf, size)
-  C.bzero(buf, size)
-end
+M.bzero = util.bzero
 
 return M

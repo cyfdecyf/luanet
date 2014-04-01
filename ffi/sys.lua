@@ -1,6 +1,7 @@
 local ffi = require 'ffi'
 local C = ffi.C
 local bit = require 'bit'
+local util = require 'luanet.ffi.util'
 
 --[[
 Note for network address:
@@ -92,7 +93,7 @@ local socklen_t1_type = ffi.typeof('socklen_t[1]')
 function M.ip_to_sockaddr(family, addr)
   if family == C.AF_INET then
     local sa = sockaddr_in1_type()
-    C.bzero(sa, ffi.sizeof(sa))
+    util.bzero(sa, ffi.sizeof(sa))
     sa[0].sin_family = C.AF_INET
     sa[0].sin_port = C.htons(addr.port);
     local r = C.inet_aton(addr.ip, sa[0].sin_addr)
