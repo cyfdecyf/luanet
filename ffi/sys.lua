@@ -2,6 +2,7 @@ local ffi = require 'ffi'
 local C = ffi.C
 local bit = require 'bit'
 local util = require 'luanet.ffi.util'
+local log = require 'luanet.log'
 
 --[[
 Note for network address:
@@ -81,6 +82,8 @@ M.SOL_SOCKET = C.SOL_SOCKET
 
 M.os = ffi.os
 
+local int_type = ffi.typeof('int')
+
 local sockaddr_type = ffi.typeof('struct sockaddr *')
 local sockaddr_in_type = ffi.typeof('struct sockaddr_in *')
 local sockaddr_in1_type = ffi.typeof('struct sockaddr_in[1]')
@@ -136,14 +139,14 @@ local sockopt_newtype = {
 -- return: err
 function M.setsockopt(sockfd, level, option_name, option_value)
   assert(sockopt_newtype[option_name])
-  local val = ffi.new(sockopt_newtype[option_name], option_value)
+  local val = sockopt_newtype[option_name](option_value)
   local r = C.setsockopt(sockfd, level, option_name, val, ffi.sizeof(val))
   return r == -1 and ffi.errno() or nil
 end
 
 function M.getsockname(sockfd)
   local sa = sockaddr_big1_type()
-  local salen = ffi.new(socklen_t1_type, ffi.sizeof(sa))
+  local salen = socklen_t1_type(ffi.sizeof(sa))
   local r = C.getsockname(sockfd, ffi.cast(sockaddr_type, sa), salen)
   if r == -1 then
     return nil, ffi.errno()
@@ -223,7 +226,7 @@ function M.set_nonblock(fd, nonblocking)
   else
     flag = bit.band(flag, bit.bnot(C.O_NONBLOCK))
   end
-  local err = C.fcntl(fd, C.F_SETFL, flag)
+  local err = C.fcntl(fd, C.F_SETFL, int_type(flag))
   if err == -1 then
     return ffi.errno()
   end
@@ -231,7 +234,7 @@ end
 
 -- return: err
 function M.close_on_exec(fd)
-  local r = C.fcntl(fd, C.F_SETFD, C.FD_CLOEXEC)
+  local r = C.fcntl(fd, C.F_SETFD, int_type(C.FD_CLOEXEC))
   return r == -1 and ffi.errno() or nil
 end
 

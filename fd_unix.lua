@@ -3,6 +3,7 @@ local poll = require 'luanet.poll'
 local util = require 'luanet.util'
 local netaddr = require 'luanet.addr'
 local TCPAddr = netaddr.TCPAddr
+local log = require 'luanet.log'
 
 local NetFD = {}
 NetFD.__index = NetFD
@@ -46,10 +47,11 @@ function NetFD:accept()
   local fd, rsa, err
   while true do
     fd, rsa, err = sys.accept(self.fd)
+    log.debug('fd %d accept return %s', self.fd, util.strerror())
     if err == nil then break end
 
     if err == sys.EAGAIN then
-      self.pd.wait_read()
+      self.pd:wait_read()
     elseif err == sys.ECONNREFUSED then
       -- This means that a socket on the listen queue was closed
       -- before we Accept()ed it; it's a silly error, so try again.

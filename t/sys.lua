@@ -1,6 +1,7 @@
 local sys = require 'luanet.ffi.sys'
 local util = require 'luanet.util'
 local ffi = require 'ffi'
+local C = ffi.C
 
 local M = {}
 
@@ -22,10 +23,15 @@ function M.test_sys_socket()
   err = sys.close_on_exec(fd)
   assert_nil(err, 'close_on_exec')
 
+  local fdflag = C.fcntl(fd, C.F_GETFD)
+  assert_not_equal(fdflag, -1, 'F_GETFD')
+  assert_true(bit.band(fdflag, C.FD_CLOEXEC) ~= 0, 'CLOEXEC flag not set')
+
   err = sys.set_nonblock(fd, true)
   assert_nil(err, 'set_nonblock true')
-  err = sys.set_nonblock(fd, false)
-  assert_nil(err, 'set_nonblock false')
+  local flag2 = C.fcntl(fd, C.F_GETFL)
+  assert_not_equal(flag2, -1, 'F_GETFL')
+  assert_true(bit.band(flag2, C.O_NONBLOCK) ~= 0, 'NONBLOCK flag not set')
 
   local ipaddr = { ip = '127.0.0.1', port = 8765 }
   local sockaddr, err = sys.ip_to_sockaddr(sys.AF_INET, ipaddr)
@@ -40,6 +46,13 @@ function M.test_sys_socket()
   err = sys.listen(fd, sys.SOMAXCONN)
   assert_nil(err, 'listen')
 
+  -- test non-blocking accept
+  _, _, err = sys.accept(fd)
+  assert_not_nil(err, 'connect')
+
+  err = sys.set_nonblock(fd, false)
+  assert_nil(err, 'set_nonblock false')
+
   -- fork to test accept, connect, read & write
   local r = ffi.C.fork()
   if r == 0 then
@@ -47,7 +60,7 @@ function M.test_sys_socket()
     ffi.C.usleep(100000);
 
     assert_nil(sys.close(fd))
-    srvfd, err = sys.socket(sys.AF_INET, sys.SOCK_STREAM, 0)
+    local srvfd, err = sys.socket(sys.AF_INET, sys.SOCK_STREAM, 0)
     assert_nil(err, 'socket client')
 
     err = sys.connect(srvfd, sockaddr)
@@ -65,7 +78,7 @@ function M.test_sys_socket()
     os.exit(0)
   else
     -- parent call accept
-    clifd, sa, err = sys.accept(fd)
+    local clifd, sa, err = sys.accept(fd)
     assert_nil(err, 'accept')
 
     local bufsize = 10
