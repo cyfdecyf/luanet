@@ -1,6 +1,7 @@
 local syskq = require 'luanet.ffi.kqueue'
 local sys = require 'luanet.ffi.sys'
 local bit = require 'bit'
+local log = require 'luanet.log'
 
 local M = {}
 
@@ -21,9 +22,9 @@ end
 local polldesc_tbl = {}
 
 -- pd: PollDesc
-function M.pollopen(pd)
+function M.pollopen(fd, pd)
   local ev = syskq.new_kevent(2)
-  ev[0].ident = pd.fd
+  ev[0].ident = fd
   ev[0].filter = syskq.EVFILT_READ
   ev[0].flags = bit.bor(syskq.EV_ADD, syskq.EV_CLEAR)
   ev[0].fflags = 0
@@ -34,9 +35,11 @@ function M.pollopen(pd)
 
   local r = syskq.kevent(kq, ev, 2, nil, 0, nil)
   if r == -1 then
+    log.debug('poll_kqueue open fd=%d failed', fd)
     return ffi.errno()
   end
-  polldesc_tbl[pd.fd] = pd
+  polldesc_tbl[fd] = pd
+  log.debug('poll_kqueue open fd=%d', fd)
 end
 
 function M.pollclose(pd)
@@ -72,7 +75,8 @@ function M.poll(block)
 
   for i=0,n-1 do
     local ev = pollev[i]
-    local pd = polldesc_tbl[ev.ident]
+    local pd = polldesc_tbl[tonumber(ev.ident)]
+    assert(pd, 'poll should not get nil pd')
     ready_pd[i+1] = pd
     if ev.filter == syskq.EVFILT_READ then
       pd.r = true

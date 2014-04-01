@@ -1,6 +1,6 @@
 local sys = require 'luanet.ffi.sys'
 local printf = require('luanet.util').printf
-local debugOn = require('log').debugOn
+local log = require 'luanet.log'
 
 local pollimp
 if sys.os == 'OSX' then
@@ -27,7 +27,9 @@ end
 function PollDesc:wait_read()
   self.r = false
   self.waitr = true
+  log.debug('fd %s wait_read yield', self.fd)
   coroutine.yield()
+  log.debug('fd %s wait_read resumed', self.fd)
 end
 
 function PollDesc:wait_write()
@@ -50,8 +52,11 @@ function M.open(fd)
   pd.waitr = false -- wait to read
   pd.waitw = false -- wait to write
 
-  local err = pollimp.pollopen(pd)
-  return pd, err
+  local err = pollimp.pollopen(fd, pd)
+  if err then
+    return nil, err
+  end
+  return pd, nil
 end
 
 -- Create and run the coroutine.
@@ -61,7 +66,7 @@ function M.run(f, ...)
   local succ, err = coroutine.resume(co, ...)
   if not succ then
     printf('run error: %s\n', err)
-    if debugOn then io.write(debug.traceback(co)) end
+    io.write(debug.traceback(co))
   end
   return co, err
 end
@@ -70,6 +75,7 @@ end
 -- Break if specified coroutine finishes.
 function M.poll(block, co)
   while true do
+    log.debug('poll block=%s co=%s', block, co)
     local pds, n = pollimp.poll(block)
     if n == 0 then break end
     for i=1,n do
@@ -82,9 +88,7 @@ function M.poll(block, co)
       end
       if not succ then
         util.printf('coroutine for %s error %s', pd:string(), err)
-        if debugOn then
-          io.write(debug.traceback(pd.co))
-        end
+        io.write(debug.traceback(pd.co))
       end
       if coroutine.status(pd.co) == 'dead' then
         pd:close()

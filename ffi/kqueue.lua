@@ -41,9 +41,11 @@ function M.new_kevent(n)
   return ffi.new('struct kevent[?]', n)
 end
 
+local timeout_type = ffi.typeof('struct timespec[1]')
+
 -- timeout: in micro seconds
 function M.new_timeout(timeout)
-  local ts = ffi.new("struct timespec[1]")
+  local ts = timeout_type()
   ts[0].tv_sec = timeout/1e6
   ts[0].tv_nsec = (timeout % 1e6) * 1e3
   return ts
