@@ -3,7 +3,7 @@ require 'lunatest'
 local log = require 'luanet.log'
 
 function test_debug()
-  log.debugOn = false
+  log.debug_off()
   log.debug('hello')
 end
 

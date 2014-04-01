@@ -2,7 +2,7 @@ local net = require 'luanet'
 local addr = require 'luanet.addr'
 local printf = require('luanet.util').printf
 
-net.debugOn = true
+net.debug_on()
 
 function echo_server(srvaddr)
   printf('server listening %s\n', srvaddr)

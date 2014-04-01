@@ -1,4 +1,7 @@
 local lunatest = require 'lunatest'
+local log = require 'luanet.log'
+
+log.debug_off()
 
 local net = require 'luanet' -- must require this to do initialization
 local sys = require 'luanet.ffi.sys'

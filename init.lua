@@ -1,5 +1,6 @@
 local dial = require 'luanet.dial'
 local poll = require 'luanet.poll'
+local log = require 'luanet.log'
 
 poll.init()
 
@@ -8,5 +9,6 @@ return {
   poll = poll.poll,
   wait = poll.wait,
   run = poll.run,
-  debugOn = require('luanet.log').debugOn,
+  debug_on = log.debug_on,
+  debug_off = log.debug_off,
 }
