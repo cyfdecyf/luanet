@@ -21,7 +21,7 @@ function M.listen(nettype, laddr)
 
   local nfd, err = sock.socket(nettype, family, sotype, proto, laddr, nil)
   if err then
-    return nil, util.strerror('dial.listen->socket')
+    return nil, 'dial.listen->socket: ' .. err
   end
   return nfd, nil
 end

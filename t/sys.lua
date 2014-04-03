@@ -1,5 +1,4 @@
 local sys = require 'luanet.ffi.sys'
-local util = require 'luanet.util'
 local ffi = require 'ffi'
 local C = ffi.C
 

@@ -15,7 +15,7 @@ function echo_server(srvaddr)
   while true do
     local c, err = ln:accept()
     if err then
-      print('accept error', err)
+      print(err)
       return err
     end
     printf('new client %s\n', c.raddr)

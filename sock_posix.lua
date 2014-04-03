@@ -20,11 +20,12 @@ end
 -- return: err
 local function listen_stream(nfd, laddr, backlog)
   if sockopt.set_default_listener_sockopts(nfd.fd) ~= nil then
-    return util.strerror('set_default_listener_sockopt fd=%d', nfd.fd)
+    return string.format('set_default_listener_sockopt %s err: %s', nfd, err)
   end
 
+  local err
   local errmsg = function(msg)
-    return util.strerror('%s %s', msg, nfd:string())
+    return string.format('%s %s err: %s', msg, nfd:string(), err)
   end
   err = bind(nfd, laddr)
   if err then return errmsg('listen_stream->bind') end
@@ -47,12 +48,12 @@ function M.socket(nettype, family, sotype, proto, laddr, raddr)
   assert(laddr ~= nil or raddr ~= nil)
   local sockfd, err = syssock.socket(family, sotype, proto)
   if err then
-    return nil, util.strerror('create_socket')
+    return nil, 'create_socket err:' .. err
   end
   err = sockopt.set_default_sockopts(sockfd)
   if err then
     sys.close(sockfd)
-    return nil, util.strerror('set_default_sockopts')
+    return nil, 'set_default_sockopts err: ' .. err
   end
 
   local nfd = NetFD:new(sockfd, family, sotype, nettype)

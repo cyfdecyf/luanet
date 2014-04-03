@@ -51,7 +51,7 @@ local function toaddr(nettype, addr)
   elseif type(addr) == 'cdata' then
     addr = sys.sockaddr_to_ip(addr)
   else
-    error(util.strerror('toaddr unknown data type %s', type(addr)))
+    error(string.format('toaddr unknown data type %s', type(addr)))
   end
 
   return addrtype:new(addr)
@@ -72,16 +72,16 @@ function NetFD:accept()
   local fd, rsa, err
   while true do
     fd, rsa, err = sys.accept(self.fd)
-    log.debug('fd %d accept return %s', self.fd, util.strerror())
+    log.debug('%s accept err: %s', self, err)
     if err == nil then break end
 
-    if err == sys.EAGAIN then
+    if err.errno == sys.EAGAIN then
       self.pd:wait_read()
-    elseif err == sys.ECONNREFUSED then
+    elseif err.errno == sys.ECONNREFUSED then
       -- This means that a socket on the listen queue was closed
       -- before we Accept()ed it; it's a silly error, so try again.
     else
-      return nil, util.strerror('accept')
+      return nil, 'accept err: ' .. err
     end
   end
 
@@ -89,12 +89,12 @@ function NetFD:accept()
   local err = nfd:init()
   if err then
     nfd:close()
-    return nil, util.strerror('accept->NetFD:init')
+    return nil, 'accept->NetFD:init err: ' .. err
   end
   local lsa, err = sys.getsockname(nfd.fd)
   if err then
     nfd:close()
-    return nil, util.strerror('accept->getsockname')
+    return nil, 'accept->getsockname err: ' .. err
   end
   local toaddr
   nfd:set_addr(sys.sockaddr_to_ip(lsa), sys.sockaddr_to_ip(rsa))

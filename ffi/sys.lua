@@ -1,7 +1,6 @@
 local ffi = require 'ffi'
 local C = ffi.C
 local bit = require 'bit'
-local util = require 'luanet.ffi.util'
 local log = require 'luanet.log'
 
 --[[
@@ -43,10 +42,28 @@ int fcntl(int fd, int cmd, ...);
 
 pid_t fork(void);
 int usleep(useconds_t useconds);
+
+char *strerror(int errnum);
+void bzero(void *s, size_t n);
 ]]
 
 -- No cross function invocation in this file, so use this module style.
 local M = {}
+
+local SysErr = setmetatable({}, {
+  __call = function (self, errno)
+    return setmetatable({ errno = errno }, self)
+  end
+})
+SysErr.__index = SysErr
+
+function SysErr:__tostring()
+  return ffi.string(C.strerror(self.errno))
+end
+
+function SysErr.__concat(l, r)
+  return tostring(l) .. tostring(r)
+end
 
 M.EOF = {} -- use a table to create a unique object
 
@@ -96,12 +113,12 @@ local socklen_t1_type = ffi.typeof('socklen_t[1]')
 function M.to_sockaddr(family, addr)
   if family == C.AF_INET then
     local sa = sockaddr_in1_type()
-    util.bzero(sa, ffi.sizeof(sa))
+    C.bzero(sa, ffi.sizeof(sa))
     sa[0].sin_family = C.AF_INET
     sa[0].sin_port = C.htons(addr.port);
     local r = C.inet_aton(addr.ip, sa[0].sin_addr)
     if r ~= 1 then
-      return nil, ffi.errno()
+      return nil, SysErr(ffi.errno())
     end
     return sa, nil
   end
@@ -126,7 +143,7 @@ end
 function M.socket(domain, type, protocol)
   local fd = C.socket(domain, type, protocol)
   if fd == -1 then
-    return nil, ffi.errno()
+    return nil, SysErr(ffi.errno())
   end
   return fd, nil
 end
@@ -141,7 +158,7 @@ function M.setsockopt(sockfd, level, option_name, option_value)
   assert(sockopt_newtype[option_name])
   local val = sockopt_newtype[option_name](option_value)
   local r = C.setsockopt(sockfd, level, option_name, val, ffi.sizeof(val))
-  return r == -1 and ffi.errno() or nil
+  return r == -1 and SysErr(ffi.errno()) or nil
 end
 
 function M.getsockname(sockfd)
@@ -149,7 +166,7 @@ function M.getsockname(sockfd)
   local salen = socklen_t1_type(ffi.sizeof(sa))
   local r = C.getsockname(sockfd, ffi.cast(sockaddr_type, sa), salen)
   if r == -1 then
-    return nil, ffi.errno()
+    return nil, SysErr(ffi.errno())
   end
   return sa, nil
 end
@@ -159,20 +176,20 @@ function M.getpeername(sockfd)
   local salen = ffi.new(socklen_t1_type, ffi.sizeof(sa))
   local r = C.getpeername(sockfd, ffi.cast(sockaddr_type, sa), salen)
   if r == -1 then
-    return nil, ffi.errno()
+    return nil, SysErr(ffi.errno())
   end
   return sa, nil
 end
 
 function M.bind(sockfd, sockaddr)
   local r = C.bind(sockfd, ffi.cast(sockaddr_type, sockaddr), ffi.sizeof(sockaddr))
-  return r == -1 and ffi.errno() or nil
+  return r == -1 and SysErr(ffi.errno()) or nil
 end
 
 -- return: err
 function M.listen(sockfd, backlog)
   local r = C.listen(sockfd, backlog)
-  return r == -1 and ffi.errno() or nil
+  return r == -1 and SysErr(ffi.errno()) or nil
 end
 
 -- return: client fd, sockaddr, err
@@ -181,7 +198,7 @@ function M.accept(sockfd)
   local salen = ffi.new(socklen_t1_type, ffi.sizeof(sa))
   local fd = C.accept(sockfd, ffi.cast(sockaddr_type, sa), salen)
   if fd == -1 then
-    return nil, nil, ffi.errno()
+    return nil, nil, SysErr(ffi.errno())
   end
   return fd, sa, nil
 end
@@ -190,7 +207,7 @@ end
 function M.connect(sockfd, sockaddr)
   local r = C.connect(sockfd, ffi.cast(sockaddr_type, sockaddr),
     ffi.sizeof(sockaddr))
-  return r == -1 and ffi.errno() or nil
+  return r == -1 and SysErr(ffi.errno()) or nil
 end
 
 function M.new_buf(n)
@@ -200,7 +217,7 @@ end
 function M.read(fd, buf, n)
   local r = tonumber(C.read(fd, buf, n))
   if r == -1 then
-    return 0, ffi.errno()
+    return 0, SysErr(ffi.errno())
   elseif r == 0 then
     return 0, M.EOF
   end
@@ -211,7 +228,7 @@ function M.write(fd, buf, n)
   -- return value bigger than int32 would be cdata
   local r = tonumber(C.write(fd, buf, n))
   if r == -1 then
-    return r, ffi.errno()
+    return r, SysErr(ffi.errno())
   end
   assert(r == n, 'write: written bytes ~= requested')
   return r, nil
@@ -220,14 +237,14 @@ end
 -- return: err
 function M.close(sockfd)
   local r = C.close(sockfd)
-  return r == -1 and ffi.errno() or nil
+  return r == -1 and SysErr(ffi.errno()) or nil
 end
 
 -- return: err
 function M.set_nonblock(fd, nonblocking)
   local flag = C.fcntl(fd, C.F_GETFL)
   if flag == -1 then
-    return ffi.errno()
+    return SysErr(ffi.errno())
   end
 
   if nonblocking then
@@ -237,14 +254,14 @@ function M.set_nonblock(fd, nonblocking)
   end
   local err = C.fcntl(fd, C.F_SETFL, int_type(flag))
   if err == -1 then
-    return ffi.errno()
+    return SysErr(ffi.errno())
   end
 end
 
 -- return: err
 function M.close_on_exec(fd)
   local r = C.fcntl(fd, C.F_SETFD, int_type(C.FD_CLOEXEC))
-  return r == -1 and ffi.errno() or nil
+  return r == -1 and SysErr(ffi.errno()) or nil
 end
 
 return M

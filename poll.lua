@@ -87,7 +87,7 @@ function M.poll(block, co)
         succ, err = coroutine.resume(pd.co)
       end
       if not succ then
-        util.printf('coroutine for %s error %s', pd:string(), err)
+        printf('coroutine for %s error %s', pd:string(), err)
         io.write(debug.traceback(pd.co))
       end
       if coroutine.status(pd.co) == 'dead' then
