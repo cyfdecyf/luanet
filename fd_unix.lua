@@ -22,19 +22,44 @@ function NetFD:new(sockfd, family, sotype, nettype)
   return setmetatable(o, self)
 end
 
+function NetFD:__tostring()
+  local tb = { 'NetFD (', self.fd, ') ' }
+  if self.laddr then
+    tb[#tb + 1] = string.format('%s:%d', self.laddr.ip, self.laddr.port)
+  end
+  if self.raddr then
+    tb[#tb + 1] = string.format('->%s:%d', self.raddr.ip, self.raddr.port)
+  end
+  return table.concat(tb)
+end
+
 function NetFD:init()
   local err
   self.pd, err = poll.open(self.fd)
   return err
 end
 
-function NetFD:set_addr(laddr, raddr)
+local function toaddr(nettype, addr)
+  if addr == nil then return nil end
+
   local addrtype
-  if self.nettype == 'tcp' then
+  if nettype == 'tcp' then
     addrtype = TCPAddr
   end
-  if laddr then self.laddr = addrtype:new(laddr) end
-  if raddr then self.raddr = addrtype:new(raddr) end
+
+  if type(addr) == 'table' then
+  elseif type(addr) == 'cdata' then
+    addr = sys.sockaddr_to_ip(addr)
+  else
+    error(util.strerror('toaddr unknown data type %s', type(addr)))
+  end
+
+  return addrtype:new(addr)
+end
+
+function NetFD:set_addr(laddr, raddr)
+  self.laddr = toaddr(self.nettype, laddr)
+  self.raddr = toaddr(self.nettype, raddr)
 end
 
 function NetFD:close()

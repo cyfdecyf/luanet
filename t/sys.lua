@@ -7,8 +7,8 @@ local M = {}
 
 function M.test_addr_convert()
   local ipaddr = { ip = '127.0.0.1', port = 1234 }
-  local sockaddr, err = sys.ip_to_sockaddr(sys.AF_INET, ipaddr)
-  assert_nil(err, 'ip_to_sockaddr test')
+  local sockaddr, err = sys.to_sockaddr(sys.AF_INET, ipaddr)
+  assert_nil(err, 'to_sockaddr test')
 
   local ipback = sys.sockaddr_to_ip(sockaddr)
   assert_true(ipback.ip == ipaddr.ip, 'converted back ip not match')
@@ -34,8 +34,8 @@ function M.test_sys_socket()
   assert_true(bit.band(flag2, C.O_NONBLOCK) ~= 0, 'NONBLOCK flag not set')
 
   local ipaddr = { ip = '127.0.0.1', port = 8765 }
-  local sockaddr, err = sys.ip_to_sockaddr(sys.AF_INET, ipaddr)
-  assert_nil(err, 'ip_to_sockaddr')
+  local sockaddr, err = sys.to_sockaddr(sys.AF_INET, ipaddr)
+  assert_nil(err, 'to_sockaddr')
 
   err = sys.bind(fd, sockaddr)
   assert_nil(err, 'bind')

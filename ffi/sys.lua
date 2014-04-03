@@ -93,7 +93,7 @@ local socklen_t1_type = ffi.typeof('socklen_t[1]')
 
 -- addr: ipv4: { ip = '127.0.0.1', port = 8080 }
 -- return: sockaddr, err
-function M.ip_to_sockaddr(family, addr)
+function M.to_sockaddr(family, addr)
   if family == C.AF_INET then
     local sa = sockaddr_in1_type()
     util.bzero(sa, ffi.sizeof(sa))
@@ -105,7 +105,7 @@ function M.ip_to_sockaddr(family, addr)
     end
     return sa, nil
   end
-  error('ip_to_sockaddr family not supported')
+  error('to_sockaddr family not supported')
 end
 
 -- sockaddr: struct sockaddr
@@ -154,7 +154,16 @@ function M.getsockname(sockfd)
   return sa, nil
 end
 
--- sockaddr: { ip: '127.0.0.1'1, port = 1234 }
+function M.getpeername(sockfd)
+  local sa = sockaddr_big1_type()
+  local salen = ffi.new(socklen_t1_type, ffi.sizeof(sa))
+  local r = C.getpeername(sockfd, ffi.cast(sockaddr_type, sa), salen)
+  if r == -1 then
+    return nil, ffi.errno()
+  end
+  return sa, nil
+end
+
 function M.bind(sockfd, sockaddr)
   local r = C.bind(sockfd, ffi.cast(sockaddr_type, sockaddr), ffi.sizeof(sockaddr))
   return r == -1 and ffi.errno() or nil

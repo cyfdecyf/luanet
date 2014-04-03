@@ -2,6 +2,10 @@ local util = require 'luanet.ffi.util'
 
 local M = {}
 
+function M.printf(...)
+  io.write(string.format(...))
+end
+
 function M.strerror(...)
   local arg = {...}
   local errmsg = util.strerror()
