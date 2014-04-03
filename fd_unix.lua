@@ -5,21 +5,21 @@ local netaddr = require 'luanet.addr'
 local TCPAddr = netaddr.TCPAddr
 local log = require 'luanet.log'
 
-local NetFD = {}
+local NetFD = setmetatable({}, {
+  __call = function (self, sockfd, family, sotype, nettype)
+    assert(type(sockfd) == 'number', 'sockfd should be number')
+    return setmetatable({
+      fd = sockfd,
+      family = family,
+      sotype = sotype,
+      nettype = nettype,
+    }, self)
+  end
+})
 NetFD.__index = NetFD
-NetFD.__gc = function (self)
-  if not self.closed then self:close() end
-end
 
-function NetFD:new(sockfd, family, sotype, nettype)
-  assert(type(sockfd) == 'number', 'sockfd should be number')
-  local o = {
-    fd = sockfd,
-    family = family,
-    sotype = sotype,
-    nettype = nettype,
-  }
-  return setmetatable(o, self)
+function NetFD:__gc(self)
+  if not self.closed then self:close() end
 end
 
 function NetFD:__tostring()
@@ -54,7 +54,7 @@ local function toaddr(nettype, addr)
     error(string.format('toaddr unknown data type %s', type(addr)))
   end
 
-  return addrtype:new(addr)
+  return addrtype(addr)
 end
 
 function NetFD:set_addr(laddr, raddr)
@@ -85,7 +85,7 @@ function NetFD:accept()
     end
   end
 
-  local nfd = NetFD:new(fd, self.family, self.sotype, self.nettype)
+  local nfd = NetFD(fd, self.family, self.sotype, self.nettype)
   local err = nfd:init()
   if err then
     nfd:close()

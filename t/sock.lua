@@ -11,7 +11,7 @@ function M.test_socket()
   local t = coroutine.create(function ()
     local s, err = socket.socket('tcp',
       sys.AF_INET, sys.SOCK_STREAM, 0,
-      TCPAddr:new('127.0.0.1', 1234), nil)
+      TCPAddr('127.0.0.1', 1234), nil)
     assert_not_nil(s, err)
 
     err = s:init()

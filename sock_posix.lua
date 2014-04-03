@@ -56,7 +56,7 @@ function M.socket(nettype, family, sotype, proto, laddr, raddr)
     return nil, 'set_default_sockopts err: ' .. err
   end
 
-  local nfd = NetFD:new(sockfd, family, sotype, nettype)
+  local nfd = NetFD(sockfd, family, sotype, nettype)
   if laddr ~= nil and raddr == nil then
     if sotype == sys.SOCK_STREAM then
       local err = listen_stream(nfd, laddr, sys.SOMAXCONN)

@@ -1,5 +1,5 @@
 local net = require 'luanet'
-local addr = require 'luanet.addr'
+local TCPAddr = require('luanet.addr').TCPAddr
 local printf = require('luanet.util').printf
 
 net.debug_on()
@@ -23,8 +23,8 @@ function echo_server(srvaddr)
   end
 end
 
-local srvaddr1 = addr.TCPAddr:new('127.0.0.1', 1234)
-local srvaddr2 = addr.TCPAddr:new('127.0.0.1', 2345)
+local srvaddr1 = TCPAddr('127.0.0.1', 1234)
+local srvaddr2 = TCPAddr('127.0.0.1', 2345)
 
 local srv1, err = net.run(echo_server, srvaddr1)
 local srv2, err = net.run(echo_server, srvaddr2)
