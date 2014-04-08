@@ -1,7 +1,6 @@
 local sys = require 'luanet.ffi.sys'
 local sockopt = require 'luanet.sockopt_bsd'
 local NetFD = require 'luanet.fd_unix'
-local util = require 'luanet.util'
 local log = require 'luanet.log'
 
 local syssock
@@ -25,7 +24,7 @@ local function listen_stream(nfd, laddr, backlog)
 
   local err
   local errmsg = function(msg)
-    return string.format('%s %s err: %s', msg, nfd:string(), err)
+    return string.format('%s %s err: %s', msg, nfd, err)
   end
   err = bind(nfd, laddr)
   if err then return errmsg('listen_stream->bind') end
@@ -38,6 +37,27 @@ local function listen_stream(nfd, laddr, backlog)
 
   local sa = sys.getsockname(nfd.fd)
   nfd:set_addr(sa, nil)
+end
+
+local function dial(nfd, laddr, raddr)
+  log.debug('dial %s %s->%s', nfd, laddr, raddr)
+  if laddr ~= nil then
+    local err = bind(nfd, laddr)
+    if err then
+      return string.format('dial->bind %s err: %s', nfd, err)
+    end
+  end
+
+  local err = nfd:init()
+  if err then return err end
+  if raddr ~= nil then
+    err = nfd:connect(raddr)
+    if err then return err end
+  end
+
+  local lsa = sys.getsockname(nfd.fd)
+  local rsa = sys.getpeername(nfd.fd)
+  nfd:set_addr(lsa, rsa)
 end
 
 -- nettype: 'tcp'
@@ -67,6 +87,12 @@ function M.socket(nettype, family, sotype, proto, laddr, raddr)
       return nfd, nil
     end
   end
+  err = dial(nfd, laddr, raddr)
+  if err then
+    nfd:close()
+    return nil, err
+  end
+  return nfd, nil
 end
 
 return M

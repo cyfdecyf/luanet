@@ -26,4 +26,13 @@ function M.listen(nettype, laddr)
   return nfd, nil
 end
 
+-- return: netfd, err
+function M.dial(nettype, raddr)
+  local family, sotype, proto = unpack(net_tbl[nettype])
+  if family == nil then
+    error(string.format('dial: nettype %s not supported', nettype))
+  end
+  return sock.socket(nettype, family, sotype, proto, nil, raddr)
+end
+
 return M

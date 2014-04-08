@@ -9,22 +9,27 @@ end
 
 local M = {}
 
-local PollDesc = {}
+local PollDesc = setmetatable({}, {
+  __call = function (self)
+    return setmetatable({}, self)
+  end
+})
 PollDesc.__index = PollDesc
-
-function PollDesc:new(pd)
-  pd = pd or {}
-  setmetatable(pd, self)
-  pd.co = coroutine.running()
-  assert(pd.co, 'PollDesc:new must be called inside coroutine')
-  return pd
-end
 
 function PollDesc:close()
   pollimp.pollclose(self)
 end
 
+--[[
+Always set coroutine to the one calling wait_read/write.
+Because the coroutine creating the socket may not be the one actually doing I/O
+on it.
+TODO: allow main thread to wait read/write.
+]]
+
 function PollDesc:wait_read()
+  self.co = coroutine.running()
+  assert(self.co, 'calling wait_read in main thread')
   self.r = false
   self.waitr = true
   log.debug('fd %s wait_read yield', self.fd)
@@ -33,9 +38,13 @@ function PollDesc:wait_read()
 end
 
 function PollDesc:wait_write()
+  self.co = coroutine.running()
+  assert(self.co, 'calling wait_write in main thread')
   self.w = false
   self.waitw = true
+  log.debug('fd %s wait_write yield', self.fd)
   coroutine.yield()
+  log.debug('fd %s wait_write resumed', self.fd)
 end
 
 function M.init()
@@ -44,7 +53,7 @@ end
 
 -- return: PollDesc, err
 function M.open(fd)
-  local pd = PollDesc:new()
+  local pd = PollDesc()
 
   pd.fd = fd
   pd.r = false -- ready for read
@@ -77,6 +86,7 @@ function M.poll(block, co)
   while true do
     log.debug('poll block=%s co=%s', block, co)
     local pds, n = pollimp.poll(block)
+    log.debug('poll got %d ready pd', n)
     if n == 0 then break end
     for i=1,n do
       local pd = pds[i]
@@ -87,17 +97,19 @@ function M.poll(block, co)
         succ, err = coroutine.resume(pd.co)
       end
       if not succ then
-        printf('coroutine for %s error %s', pd:string(), err)
-        io.write(debug.traceback(pd.co))
+        printf('coroutine %s for fd=%d err: %s\n%s', pd.co, pd.fd,
+          err, debug.traceback(pd.co))
       end
       if coroutine.status(pd.co) == 'dead' then
         pd:close()
-        if co == pd.co then break end
+        if co == pd.co then goto done end
       end
     end
   end
+  ::done::
 end
 
+-- Wait for a specifc coroutine finish.
 function M.wait(co)
   while coroutine.status(co) ~= 'dead' do
     M.poll(true, co)

@@ -1,3 +1,5 @@
+#!/usr/bin/env luajit
+
 local lunatest = require 'lunatest'
 local log = require 'luanet.log'
 

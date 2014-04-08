@@ -18,18 +18,17 @@ local NetFD = setmetatable({}, {
 })
 NetFD.__index = NetFD
 
-function NetFD:__gc(self)
+function NetFD:__gc()
   if not self.closed then self:close() end
 end
 
 function NetFD:__tostring()
-  local tb = { 'NetFD (', self.fd, ') ' }
-  if self.laddr then
-    tb[#tb + 1] = string.format('%s:%d', self.laddr.ip, self.laddr.port)
-  end
-  if self.raddr then
-    tb[#tb + 1] = string.format('->%s:%d', self.raddr.ip, self.raddr.port)
-  end
+  local tb = { 'NetFD(fd=', self.fd, ':',
+    tostring(self.laddr),
+    '->',
+    tostring(self.raddr),
+    ')',
+  }
   return table.concat(tb)
 end
 
@@ -65,6 +64,7 @@ end
 function NetFD:close()
   sys.close(self.fd)
   self.closed = true
+  log.debug('%s closed', self)
 end
 
 -- return: nfd, err
@@ -72,7 +72,7 @@ function NetFD:accept()
   local fd, rsa, err
   while true do
     fd, rsa, err = sys.accept(self.fd)
-    log.debug('%s accept err: %s', self, err)
+    log.debug('%s accept fd=%s err: %s', self, fd, err)
     if err == nil then break end
 
     if err.errno == sys.EAGAIN then
@@ -98,7 +98,31 @@ function NetFD:accept()
   end
   local toaddr
   nfd:set_addr(sys.sockaddr_to_ip(lsa), sys.sockaddr_to_ip(rsa))
+  log.debug('%s accept got %s', self, nfd)
   return nfd, nil
+end
+
+-- return: err
+function NetFD:connect(raddr)
+  local sa, err = sys.to_sockaddr(self.family, raddr)
+  if err then return err end
+
+  while true do
+    local err = sys.connect(self.fd, sa)
+    if err == nil or err.errno == sys.EISCONN then
+      break
+    end
+
+    -- log.debug('%s connect err: %s', self, err)
+    if err.errno ~= sys.EINPROGRESS and
+      err.errno ~= sys.EALREADY and
+      err.errno ~= sys.EINTR then
+      log.debug('%s connect %s err: %s', self, raddr, err)
+      return err
+    end
+
+    self.pd:wait_write()
+  end
 end
 
 return NetFD

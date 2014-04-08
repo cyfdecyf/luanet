@@ -1,28 +1,43 @@
 local socket = require 'luanet.sock_posix'
 local sys = require 'luanet.ffi.sys'
 local poll = require 'luanet.poll'
+local log = require 'luanet.log'
 local netaddr = require 'luanet.addr'
-
 local TCPAddr = netaddr.TCPAddr
 
 local M = {}
 
 function M.test_socket()
-  local t = coroutine.create(function ()
+  local addr = TCPAddr('127.0.0.1', 1234)
+  local srvfunc = function ()
     local s, err = socket.socket('tcp',
-      sys.AF_INET, sys.SOCK_STREAM, 0,
-      TCPAddr('127.0.0.1', 1234), nil)
+      sys.AF_INET, sys.SOCK_STREAM, 0, addr, nil)
     assert_not_nil(s, err)
-
-    err = s:init()
     assert_nil(err)
 
-    s:close()
-  end)
-  coroutine.resume(t)
+    local c, err = s:accept()
+    assert_not_nil(c, err)
+    assert_nil(err)
 
-  poll.wait(t)
-  assert_true(coroutine.status(t) == 'dead')
+    c:close()
+    s:close()
+    log.debug('srv %s finished', coroutine.running())
+  end
+
+  local clifunc = function ()
+    local s, err = socket.socket('tcp',
+      sys.AF_INET, sys.SOCK_STREAM, 0, nil, addr)
+    assert_not_nil(s, tostring(err))
+    s:close()
+    log.debug('cli %s finished', coroutine.running())
+  end
+
+  local srv = poll.run(srvfunc)
+  local cli = poll.run(clifunc)
+  poll.wait(srv)
+  poll.wait(cli)
+  assert_true(coroutine.status(srv) == 'dead')
+  assert_true(coroutine.status(cli) == 'dead')
 end
 
 return M

@@ -13,10 +13,13 @@ enum {
 
   EAGAIN = 35,
   EWOULDBLOCK = 35,
+  EINPROGRESS = 36,
 
   EADDRINUSE = 48,
   ECONNABORTED = 53,
   ECONNRESET = 54,
+  ENOBUFS = 55,
+  EISCONN = 56,
   ETIMEOUT = 60,
   ECONNREFUSED = 61,
 };
@@ -62,9 +65,10 @@ enum {
 typedef int32_t pid_t;
 typedef uint32_t useconds_t;
 
-/* From netinet/in.h */
+/* netinet/in.h */
 static const int INADDR_ANY = (uint32_t)0x00000000;
 
+/* sys/socket.h */
 static const int SOMAXCONN = 128;
 static const int SOL_SOCKET = 0xffff;
 

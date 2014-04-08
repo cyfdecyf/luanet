@@ -24,14 +24,15 @@ char *inet_ntoa(struct in_addr in);
 int getsockopt(int sockfd, int level, int optname, const void *optval, socklen_t *optlen);
 int setsockopt(int sockfd, int level, int optname, const void *optval, socklen_t optlen);
 
-int getsockname(int sockfd, struct sockaddr *address, socklen_t *address_len);
+int getsockname(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
+int getpeername(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
 
 int socket(int domain, int type, int protocol);
 
-int bind(int sockfd, const struct sockaddr *address, socklen_t address_len);
+int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 int listen(int sockfd, int backlog);
-int accept(int sockfd, struct sockaddr *restrict address, socklen_t *restrict address_len);
-int connect(int sockfd, const struct sockaddr *address, socklen_t address_len);
+int accept(int sockfd, struct sockaddr *addr, socklen_t *restrict addrlen);
+int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 
 ssize_t read(int fildes, void *buf, size_t nbyte);
 ssize_t write(int fildes, const void *buf, size_t nbyte);
@@ -70,10 +71,13 @@ M.EOF = {} -- use a table to create a unique object
 M.EINTR = C.EINTR
 M.EAGAIN = C.EAGAIN
 M.EWOULDBLOCK = C.EWOULDBLOCK
+M.EINPROGRESS = C.EINPROGRESS
 
 M.EADDRINUSE  = C.EADDRINUSE
 M.ECONNABORTED = C.ECONNABORTED
 M.ECONNRESET = C.ECONNRESET
+M.ENOBUFS = C.ENOBUFS
+M.EISCONN = C.EISCONN
 M.ETIMEOUT = C.ETIMEOUT
 M.ECONNREFUSED = C.ECONNREFUSED
 
@@ -94,6 +98,7 @@ M.SO_BROADCAST = C.SO_BROADCAST
 
 M.INADDR_ANY = C.INADDR_ANY
 
+-- TODO: get this from running kernel.
 M.SOMAXCONN = C.SOMAXCONN
 M.SOL_SOCKET = C.SOL_SOCKET
 
@@ -122,7 +127,7 @@ function M.to_sockaddr(family, addr)
     end
     return sa, nil
   end
-  error('to_sockaddr family not supported')
+  error(string.format('to_sockaddr family %s not supported', family))
 end
 
 -- sockaddr: struct sockaddr

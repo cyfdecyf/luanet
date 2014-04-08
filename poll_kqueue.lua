@@ -50,7 +50,6 @@ end
 
 local n_pollev = 64
 local pollev = syskq.new_kevent(n_pollev)
-local ready_pd = {}
 
 -- return: ready poll desc
 function M.poll(block)
@@ -73,11 +72,13 @@ function M.poll(block)
     end
   end
 
+  -- TODO avoid create too many garbage here
+  local ready_pd = {}
   for i=0,n-1 do
     local ev = pollev[i]
     local pd = polldesc_tbl[tonumber(ev.ident)]
     assert(pd, 'poll should not get nil pd')
-    ready_pd[i+1] = pd
+    ready_pd[#ready_pd + 1] = pd
     if ev.filter == syskq.EVFILT_READ then
       pd.r = true
     elseif ev.filter == syskq.EVFILT_WRITE then
