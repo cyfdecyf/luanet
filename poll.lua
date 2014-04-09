@@ -9,15 +9,25 @@ end
 
 local M = {}
 
+local polldesc_cache
+
 local PollDesc = setmetatable({}, {
   __call = function (self)
-    return setmetatable({}, self)
+    if polldesc_cache == nil then
+      polldesc_cache = setmetatable({}, self)
+    end
+    local pd = polldesc_cache
+    polldesc_cache = pd.link
+    return pd
   end
 })
 PollDesc.__index = PollDesc
 
+-- PollDesc belongs to some specific NetFD, so close should be called by NetFD.
 function PollDesc:close()
   pollimp.pollclose(self)
+  self.link = polldesc_cache
+  polldesc_cache = self
 end
 
 --[[
@@ -32,9 +42,9 @@ function PollDesc:wait_read()
   assert(self.co, 'calling wait_read in main thread')
   self.r = false
   self.waitr = true
-  log.debug('fd %s wait_read yield', self.fd)
+  log.debug('fd=%d wait_read yield', self.fd)
   coroutine.yield()
-  log.debug('fd %s wait_read resumed', self.fd)
+  log.debug('fd=%d wait_read resumed', self.fd)
 end
 
 function PollDesc:wait_write()
@@ -42,9 +52,9 @@ function PollDesc:wait_write()
   assert(self.co, 'calling wait_write in main thread')
   self.w = false
   self.waitw = true
-  log.debug('fd %s wait_write yield', self.fd)
+  log.debug('fd=%d wait_write yield', self.fd)
   coroutine.yield()
-  log.debug('fd %s wait_write resumed', self.fd)
+  log.debug('fd=%d wait_write resumed', self.fd)
 end
 
 function M.init()
@@ -60,6 +70,7 @@ function M.open(fd)
   pd.w = false -- ready for write
   pd.waitr = false -- wait to read
   pd.waitw = false -- wait to write
+  pd.co = nil
 
   local err = pollimp.pollopen(fd, pd)
   if err then
@@ -86,14 +97,17 @@ function M.poll(block, co)
   while true do
     log.debug('poll block=%s co=%s', block, co)
     local pds, n = pollimp.poll(block)
-    log.debug('poll got %d ready pd', n)
+    log.debug('poll got %d ready PollDesc', n)
     if n == 0 then break end
     for i=1,n do
       local pd = pds[i]
       local succ, err
+      assert(coroutine.status(pd.co) ~= 'dead', "ready polldesc's coroutine is dead")
       if pd.r and pd.waitr then
+        log.debug('poll resume wait read fd=%d', pd.fd)
         succ, err = coroutine.resume(pd.co)
       elseif pd.w and pd.waitw then
+        log.debug('poll resume wait write fd=%d', pd.fd)
         succ, err = coroutine.resume(pd.co)
       end
       if not succ then
@@ -101,7 +115,6 @@ function M.poll(block, co)
           err, debug.traceback(pd.co))
       end
       if coroutine.status(pd.co) == 'dead' then
-        pd:close()
         if co == pd.co then goto done end
       end
     end

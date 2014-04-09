@@ -63,6 +63,9 @@ end
 
 function NetFD:close()
   sys.close(self.fd)
+  if self.pd then
+    self.pd:close()
+  end
   self.closed = true
   log.debug('%s closed', self)
 end

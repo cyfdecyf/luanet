@@ -76,12 +76,16 @@ function M.poll(block)
   local ready_pd = {}
   for i=0,n-1 do
     local ev = pollev[i]
-    local pd = polldesc_tbl[tonumber(ev.ident)]
-    assert(pd, 'poll should not get nil pd')
+    local fd = tonumber(ev.ident)
+    local pd = polldesc_tbl[fd]
+    assert(pd ~= nil, 'poll should not get nil PollDesc')
+    assert(pd.fd == fd, 'fd from event ident and PollDesc not match')
     ready_pd[#ready_pd + 1] = pd
     if ev.filter == syskq.EVFILT_READ then
+      log.debug('poll_kqueue fd=%d ready for read', fd)
       pd.r = true
     elseif ev.filter == syskq.EVFILT_WRITE then
+      log.debug('poll_kqueue fd=%d ready for write', fd)
       pd.w = true
     end
   end
