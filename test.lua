@@ -1,12 +1,13 @@
 #!/usr/bin/env luajit
 
 local lunatest = require 'lunatest'
-local log = require 'luanet.log'
 
-log.debug_off()
+require 'pl.strict'
 
-local net = require 'luanet' -- must require this to do initialization
+local net = require 'luanet' -- do initialization
 local sys = require 'luanet.ffi.sys'
+
+require('luanet.log').debug_off()
 
 lunatest.suite('luanet.t.sys')
 if sys.os == 'OSX' then

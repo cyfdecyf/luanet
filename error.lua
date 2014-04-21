@@ -1,16 +1,14 @@
 local M = {}
 
-local OpError = setmetatable({}, {
-  __call = function (self, op, data, err)
-    return setmetatable({
-      op = op,
-      data = data,
-      err = err,
-    }, self)
-  end
-})
-OpError.__index = OpError
-M.OpError = OpError
+local class = require 'pl.class'
+
+M.OpError = class.OpError()
+
+function OpError:_init(op, data, err)
+  self.op = op
+  self.data = data
+  self.err = err
+end
 
 function OpError:__tostring()
   return table.concat{self.op, ' ', tostring(self.data), ' ', tostring(self.err)}

@@ -2,6 +2,8 @@ local sys = require 'luanet.ffi.sys'
 local printf = require('luanet.util').printf
 local log = require 'luanet.log'
 
+local class = require 'pl.class'
+
 local pollimp
 if sys.os == 'OSX' then
   pollimp = require 'luanet.poll_kqueue'
@@ -11,17 +13,16 @@ local M = {}
 
 local polldesc_cache
 
-local PollDesc = setmetatable({}, {
-  __call = function (self)
-    if polldesc_cache == nil then
-      polldesc_cache = setmetatable({}, self)
-    end
-    local pd = polldesc_cache
-    polldesc_cache = pd.link
-    return pd
+M.PollDesc = class.PollDesc()
+
+function PollDesc:_init()
+  if polldesc_cache == nil then
+    polldesc_cache = setmetatable({}, self)
   end
-})
-PollDesc.__index = PollDesc
+  local pd = polldesc_cache
+  polldesc_cache = pd.link
+  return pd
+end
 
 -- PollDesc belongs to some specific NetFD, so close should be called by NetFD.
 function PollDesc:close()

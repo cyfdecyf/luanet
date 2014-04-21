@@ -2,6 +2,7 @@ local ffi = require 'ffi'
 local C = ffi.C
 local bit = require 'bit'
 local log = require 'luanet.log'
+local class = require 'pl.class'
 
 --[[
 Note for network address:
@@ -50,12 +51,11 @@ void bzero(void *s, size_t n);
 
 local M = {}
 
-local SysErr = setmetatable({}, {
-  __call = function (self, errno)
-    return setmetatable({ errno = errno }, self)
-  end
-})
-SysErr.__index = SysErr
+M.SysErr = class.SysErr()
+
+function SysErr:_init(errno)
+  self.errno = errno
+end
 
 function SysErr:__tostring()
   return ffi.string(C.strerror(self.errno))
@@ -215,16 +215,14 @@ function M.connect(sockfd, sockaddr)
   return r == -1 and SysErr(ffi.errno()) or nil
 end
 
-M.Buffer = setmetatable({}, {
-  -- n can be either lua string or a number specifying buffer size
-  __call = function (self, n)
-    local isstr = type(n) == 'string'
-    local size = isstr and #n or n
-    local buf = ffi.new('uint8_t[?]', size)
-    if isstr then ffi.copy(buf, n) end
-    return buf
-  end
-})
+-- n can be either lua string or a number specifying buffer size
+function M.Buffer(n)
+  local isstr = type(n) == 'string'
+  local size = isstr and #n or n
+  local buf = ffi.new('uint8_t[?]', size)
+  if isstr then ffi.copy(buf, n) end
+  return buf
+end
 
 function M.buf_to_string(buf, len)
   return ffi.string(buf, len)

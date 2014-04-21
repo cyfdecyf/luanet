@@ -6,18 +6,17 @@ local TCPAddr = netaddr.TCPAddr
 local log = require 'luanet.log'
 local OpError = require('luanet.error').OpError
 
-local NetFD = setmetatable({}, {
-  __call = function (self, sockfd, family, sotype, nettype)
-    assert(type(sockfd) == 'number', 'sockfd should be number')
-    return setmetatable({
-      fd = sockfd,
-      family = family,
-      sotype = sotype,
-      nettype = nettype,
-    }, self)
-  end
-})
-NetFD.__index = NetFD
+local class = require 'pl.class'
+
+class.NetFD()
+
+function NetFD:_init(sockfd, family, sotype, nettype)
+  assert(type(sockfd) == 'number', 'sockfd should be number')
+  self.fd = sockfd
+  self.family = family
+  self.sotype = sotype
+  self.nettype = nettype
+end
 
 function NetFD:__gc()
   if not self.closed then self:close() end

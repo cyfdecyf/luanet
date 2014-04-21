@@ -5,6 +5,8 @@ local C = ffi.C
 
 local M = {}
 
+local _
+
 function M.test_addr_convert()
   local ipaddr = { ip = '127.0.0.1', port = 1234 }
   local sockaddr, err = sys.to_sockaddr(sys.AF_INET, ipaddr)
