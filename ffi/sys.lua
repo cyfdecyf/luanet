@@ -48,7 +48,6 @@ char *strerror(int errnum);
 void bzero(void *s, size_t n);
 ]]
 
--- No cross function invocation in this file, so use this module style.
 local M = {}
 
 local SysErr = setmetatable({}, {
@@ -67,6 +66,7 @@ function SysErr.__concat(l, r)
 end
 
 M.EOF = {} -- use a table to create a unique object
+M.EUnexpectedEOF = {}
 
 M.EINTR = C.EINTR
 M.EAGAIN = C.EAGAIN
@@ -215,11 +215,24 @@ function M.connect(sockfd, sockaddr)
   return r == -1 and SysErr(ffi.errno()) or nil
 end
 
-function M.new_buf(n)
-  return ffi.new('uint8_t[?]', n)
+M.Buffer = setmetatable({}, {
+  -- n can be either lua string or a number specifying buffer size
+  __call = function (self, n)
+    local isstr = type(n) == 'string'
+    local size = isstr and #n or n
+    local buf = ffi.new('uint8_t[?]', size)
+    if isstr then ffi.copy(buf, n) end
+    return buf
+  end
+})
+
+function M.buf_to_string(buf, len)
+  return ffi.string(buf, len)
 end
 
+-- return: bytes read, err
 function M.read(fd, buf, n)
+  assert(n <= ffi.sizeof(buf), 'read size larger than buffer size')
   local r = tonumber(C.read(fd, buf, n))
   if r == -1 then
     return 0, SysErr(ffi.errno())
@@ -229,8 +242,13 @@ function M.read(fd, buf, n)
   return r, nil
 end
 
+-- return: bytes written, err
 function M.write(fd, buf, n)
-  -- return value bigger than int32 would be cdata
+  local len = nil
+  if type(buf) == 'string' then len = #buf end
+  if type(buf) == 'cdata' then len = ffi.sizeof(buf) end
+  assert(n <= len, 'write size larger than buffer size')
+  -- XXX return value bigger than int32 would be cdata
   local r = tonumber(C.write(fd, buf, n))
   if r == -1 then
     return r, SysErr(ffi.errno())

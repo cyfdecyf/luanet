@@ -1,6 +1,5 @@
 local kq = require 'luanet.ffi.kqueue'
 local pollkq = require 'luanet.poll_kqueue'
-local ffi = require 'ffi'
 
 local M = {}
 

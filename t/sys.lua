@@ -1,4 +1,5 @@
 local sys = require 'luanet.ffi.sys'
+local Buffer = sys.Buffer
 local ffi = require 'ffi'
 local C = ffi.C
 
@@ -66,7 +67,7 @@ function M.test_sys_socket()
     assert_nil(err, 'connect')
 
     local bufsize = 50
-    local buf = sys.new_buf(bufsize)
+    local buf = Buffer(bufsize)
     for i=0,bufsize-1 do
       buf[i] = i
     end
@@ -81,7 +82,7 @@ function M.test_sys_socket()
     assert_nil(err, 'accept')
 
     local bufsize = 10
-    local buf = sys.new_buf(bufsize)
+    local buf = Buffer(bufsize)
 
     local c = 0
     while true do
