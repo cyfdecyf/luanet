@@ -1,8 +1,27 @@
 local net = require 'luanet'
+local sys = net.sys
+local Buffer = net.sys.Buffer
 local TCPAddr = require('luanet.addr').TCPAddr
 local printf = require('luanet.util').printf
 
 net.debug_on()
+
+function srv_client(cli)
+  local bufsize = 64
+  local buf = Buffer(bufsize)
+
+  while true do
+    local n, err = cli:read(buf, bufsize)
+    if err then break end
+    cli:write(buf, n)
+  end
+
+  if err and err ~= nil then
+    io.write('client read error: ', err)
+  end
+
+  cli:close()
+end
 
 function echo_server(srvaddr)
   printf('server listening %s\n', srvaddr)
@@ -19,7 +38,8 @@ function echo_server(srvaddr)
       return err
     end
     printf('new client %s\n', c.raddr)
-    c:close()
+
+    net.run(srv_client, c)
   end
 end
 

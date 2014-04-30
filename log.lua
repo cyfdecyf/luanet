@@ -6,7 +6,12 @@ local debug = true
 
 function M.debug(...)
   if debug then
-    io.write('[debug] ', string.format(...), '\n')
+    if coroutine.running() then
+      io.write('[debug] ', tostring(coroutine.running()), ' ',
+        string.format(...), '\n')
+    else
+      io.write('[debug] thread: main ', string.format(...), '\n')
+    end
  end
 end
 

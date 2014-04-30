@@ -102,14 +102,17 @@ function M.poll(block, co)
     if n == 0 then break end
     for i=1,n do
       local pd = pds[i]
-      local succ, err
+      local succ = true
+      local err
       assert(coroutine.status(pd.co) ~= 'dead', "ready polldesc's coroutine is dead")
       if pd.r and pd.waitr then
-        log.debug('poll resume wait read fd=%d', pd.fd)
+        log.debug('poll resume %s wait_read', pd.co)
         succ, err = coroutine.resume(pd.co)
       elseif pd.w and pd.waitw then
-        log.debug('poll resume wait write fd=%d', pd.fd)
+        log.debug('poll resume %s wait_write', pd.co)
         succ, err = coroutine.resume(pd.co)
+      else
+        log.debug('%s fd=%s ready for not matching op', pd.co, pd.fd)
       end
       if not succ then
         printf('coroutine %s for fd=%d err: %s\n%s', pd.co, pd.fd,

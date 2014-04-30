@@ -1,4 +1,8 @@
 local sys = require 'luanet.ffi.sys'
+local syssock
+if sys.os == 'OSX' then
+  syssock = require 'luanet.sys_cloexec'
+end
 local poll = require 'luanet.poll'
 local util = require 'luanet.util'
 local netaddr = require 'luanet.addr'
@@ -74,7 +78,7 @@ end
 function NetFD:accept()
   local fd, rsa, err
   while true do
-    fd, rsa, err = sys.accept(self.fd)
+    fd, rsa, err = syssock.accept(self.fd)
     log.debug('%s accept fd=%s err: %s', self, fd, err)
     if err == nil then break end
 
