@@ -31,6 +31,10 @@ function PollDesc:close()
   polldesc_cache = self
 end
 
+function PollDesc:__tostring()
+  return string.format("PollDesc(%s, fd=%s)", self.co, self.fd)
+end
+
 --[[
 Always set coroutine to the one calling wait_read/write.
 Because the coroutine creating the socket may not be the one actually doing I/O
@@ -104,23 +108,27 @@ function M.poll(block, co)
       local pd = pds[i]
       local succ = true
       local err
-      assert(coroutine.status(pd.co) ~= 'dead', "ready polldesc's coroutine is dead")
+      if coroutine.status(pd.co) == 'dead' then
+        log.debug('%s coroutine is dead', pd)
+        goto continue
+      end
       if pd.r and pd.waitr then
-        log.debug('poll resume %s wait_read', pd.co)
+        log.debug('poll resume %s wait_read', pd)
         succ, err = coroutine.resume(pd.co)
       elseif pd.w and pd.waitw then
-        log.debug('poll resume %s wait_write', pd.co)
+        log.debug('poll resume %s wait_write', pd)
         succ, err = coroutine.resume(pd.co)
       else
-        log.debug('%s fd=%s ready for not matching op', pd.co, pd.fd)
+        log.debug('%s ready for not matching op', pd)
       end
       if not succ then
-        printf('coroutine %s for fd=%d err: %s\n%s', pd.co, pd.fd,
-          err, debug.traceback(pd.co))
+        printf('poll %s coroutine err: %s\n%s', pd, err,
+          debug.traceback(pd.co))
       end
       if coroutine.status(pd.co) == 'dead' then
         if co == pd.co then goto done end
       end
+      ::continue::
     end
   end
   ::done::
